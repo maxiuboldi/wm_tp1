@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -19,8 +19,8 @@ from sklearn.svm import SVC
 SEED = 15
 MAX_FEATURES = 150
 K_FOLD = 5
-JOBS = -1
-N_ITER = 500
+JOBS = 4
+N_ITER = 10
 
 # Leemos el dataset
 dataset = pd.read_pickle(r'la_nacion\datasets\la_nacion_dataset.pkl')
@@ -29,7 +29,7 @@ y = dataset.iloc[:, -1]
 
 # clases a números
 le = LabelEncoder()
-y = pd.DataFrame(le.fit_transform(y), columns=['target'])
+y = le.fit_transform(y)
 # números y categorias
 num_clase = le.classes_
 
@@ -48,7 +48,8 @@ pipe_rf = Pipeline([('scl', SelectKBest(score_func=chi2, k=MAX_FEATURES)),
 # grilla de parámetros
 grid_params_lr = {'clf__penalty': ['l1', 'l2'],
                   'clf__C': np.logspace(-5, 5, 20),
-                  'clf__solver': ['liblinear']}
+                  'clf__solver': ['liblinear'],
+                  'clf__multi_class': ['auto']}
 
 grid_params_rf = {'clf__criterion': ['gini', 'entropy'],
                   'clf__min_samples_leaf': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -60,23 +61,25 @@ grid_params_svc = {'clf__kernel': ['linear'],
                    'clf__C': np.logspace(-5, 5, 20)}
 
 # busquedas
-gs_lr = GridSearchCV(estimator=pipe_lr,
-                     param_grid=grid_params_lr,
-                     scoring='accuracy',
-                     cv=K_FOLD,
-                     n_jobs=JOBS)
+gs_lr = RandomizedSearchCV(estimator=pipe_lr,
+                           param_distributions=grid_params_lr,
+                           n_iter=N_ITER,
+                           scoring='accuracy',
+                           cv=K_FOLD,
+                           n_jobs=JOBS)
 
-gs_rf = GridSearchCV(estimator=pipe_rf,
-                     param_grid=grid_params_rf,
-                     scoring='accuracy',
-                     cv=K_FOLD,
-                     n_jobs=JOBS)
-
-gs_svc = GridSearchCV(estimator=pipe_svc,
-                      param_grid=grid_params_svc,
-                      scoring='accuracy',
-                      cv=K_FOLD,
-                      n_jobs=JOBS)
+gs_rf = RandomizedSearchCV(estimator=pipe_rf,
+                           param_distributions=grid_params_rf,
+                           n_iter=N_ITER,
+                           scoring='accuracy',
+                           cv=K_FOLD,
+                           n_jobs=JOBS)
+gs_svc = RandomizedSearchCV(estimator=pipe_svc,
+                            param_distributions=grid_params_svc,
+                            n_iter=N_ITER,
+                            scoring='accuracy',
+                            cv=K_FOLD,
+                            n_jobs=JOBS)
 
 # lista de pipelines
 grids = [gs_lr, gs_rf, gs_svc]

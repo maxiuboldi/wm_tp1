@@ -81,7 +81,7 @@ for docu in range(0, len(X)):
 
 y_new = np.delete(y, y_del)
 
-vectorizer = TfidfVectorizer(tokenizer=tokenize, ngram_range=(1, 2), min_df=3, max_df=0.8, stop_words=spanish_stops, lowercase=True, strip_accents='unicode')
+vectorizer = TfidfVectorizer(tokenizer=tokenize, ngram_range=(1, 2), min_df=5, max_df=0.8, stop_words=spanish_stops, lowercase=True, strip_accents='unicode')
 X = pd.DataFrame(vectorizer.fit_transform(documents).toarray(), columns=vectorizer.get_feature_names())
 
 # exporta el dataset para clasificar
