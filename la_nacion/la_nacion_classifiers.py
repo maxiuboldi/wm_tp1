@@ -10,19 +10,18 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 SEED = 15
-MAX_FEATURES = 150
 K_FOLD = 5
 JOBS = 4
-N_ITER = 10
 
-# Leemos el dataset
+print('Leyendo dataset')
+# Leer el dataset
 dataset = pd.read_pickle(r'la_nacion\datasets\la_nacion_dataset.pkl')
 X = dataset.iloc[:, :-1]
 y = dataset.iloc[:, -1]
@@ -33,81 +32,69 @@ y = le.fit_transform(y)
 # números y categorias
 num_clase = le.classes_
 
+print('\nSeparando en traint y test')
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED, stratify=y)
 
-# pipelines
-pipe_lr = Pipeline([('scl', SelectKBest(score_func=chi2, k=MAX_FEATURES)),
-                    ('clf', LogisticRegression(random_state=SEED))])
+print('\nGenerando Pipeline')
+pipe = Pipeline([('scl', SelectKBest(score_func=chi2)),
+                 ('clf', RandomForestClassifier(random_state=SEED))])
 
-pipe_svc = Pipeline([('scl', SelectKBest(score_func=chi2, k=MAX_FEATURES)),
-                     ('clf', SVC(random_state=SEED))])
+search_space = [{'clf': [LogisticRegression(random_state=SEED)],
+                 'scl__k': [100, 150, 200],
+                 'clf__penalty': ['l1', 'l2'],
+                 'clf__C': np.logspace(-5, 5, 20),
+                 'clf__solver': ['liblinear'],
+                 'clf__multi_class': ['auto']},
+                {'clf': [RandomForestClassifier(random_state=SEED)],
+                 'scl__k': [100, 150, 200],
+                 'clf__criterion': ['gini', 'entropy'],
+                 'clf__min_samples_leaf': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                 'clf__max_depth': range(3, 30, 2),
+                 'clf__min_samples_split': [2, 5, 10],
+                 'clf__n_estimators': [4, 8, 16, 32, 64, 128, 256, 512]},
+                {'clf': [SVC(random_state=SEED)],
+                 'scl__k': [100, 150, 200],
+                 'clf__kernel': ['linear'],
+                 'clf__C': np.logspace(-5, 5, 20)}]
 
-pipe_rf = Pipeline([('scl', SelectKBest(score_func=chi2, k=MAX_FEATURES)),
-                    ('clf', RandomForestClassifier(random_state=SEED))])
+gs = GridSearchCV(estimator=pipe,
+                  param_grid=search_space,
+                  scoring='accuracy',
+                  cv=K_FOLD,
+                  n_jobs=JOBS,
+                  verbose=1,
+                  return_train_score=True)
 
-# grilla de parámetros
-grid_params_lr = {'clf__penalty': ['l1', 'l2'],
-                  'clf__C': np.logspace(-5, 5, 20),
-                  'clf__solver': ['liblinear'],
-                  'clf__multi_class': ['auto']}
+print('\nAjustando Pipeline en GridSearchCV')
+gs.fit(X_train, y_train)
 
-grid_params_rf = {'clf__criterion': ['gini', 'entropy'],
-                  'clf__min_samples_leaf': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                  'clf__max_depth': range(3, 30, 2),
-                  'clf__min_samples_split': [2, 5, 10],
-                  'clf__n_estimators': [4, 8, 16, 32, 64, 128, 256, 512]}
+# resultados del CV
+cv_result = pd.DataFrame(gs.cv_results_)
 
-grid_params_svc = {'clf__kernel': ['linear'],
-                   'clf__C': np.logspace(-5, 5, 20)}
+# features finales y pesos
+names = X_train.columns.values[gs.best_estimator_.named_steps["scl"].get_support()]
+scores = gs.best_estimator_.named_steps["scl"].scores_[gs.best_estimator_.named_steps["scl"].get_support()]
+names_scores = list(zip(names, scores))
+features_sel = pd.DataFrame(names_scores, columns=['Feature', 'Scores'])
 
-# busquedas
-gs_lr = RandomizedSearchCV(estimator=pipe_lr,
-                           param_distributions=grid_params_lr,
-                           n_iter=N_ITER,
-                           scoring='accuracy',
-                           cv=K_FOLD,
-                           n_jobs=JOBS)
+# predicción del resultado
+y_pred = gs.predict(X_test)
 
-gs_rf = RandomizedSearchCV(estimator=pipe_rf,
-                           param_distributions=grid_params_rf,
-                           n_iter=N_ITER,
-                           scoring='accuracy',
-                           cv=K_FOLD,
-                           n_jobs=JOBS)
-gs_svc = RandomizedSearchCV(estimator=pipe_svc,
-                            param_distributions=grid_params_svc,
-                            n_iter=N_ITER,
-                            scoring='accuracy',
-                            cv=K_FOLD,
-                            n_jobs=JOBS)
+# métricas para exportar
+conf_mat = pd.DataFrame(confusion_matrix(y_test, y_pred), columns=num_clase, index=num_clase)
+class_rep = pd.DataFrame.from_dict(classification_report(y_test, y_pred, target_names=num_clase, output_dict=True))
 
-# lista de pipelines
-grids = [gs_lr, gs_rf, gs_svc]
+print('\nMatriz de Confusión')
+print(conf_mat)
+print('\nReporte de Clasificación')
+print(classification_report(y_test, y_pred, target_names=num_clase))
+print('\nAccuracy_score: {}'.format(accuracy_score(y_test, y_pred)))
 
-# diccionario de pipelines y clasificadores
-grid_dict = {0: 'Logistic Regression', 1: 'Random Forest',
-             2: 'Support Vector Classifier'}
+print('\nExportando resultados')
+with pd.ExcelWriter(r'la_nacion\resultados\resultados_la_nacion.xlsx') as writer:
+    cv_result.to_excel(writer, sheet_name='cv_resultado', index=False)
+    features_sel.to_excel(writer, sheet_name='Features_Seleccionadas', index=False)
+    conf_mat.to_excel(writer, sheet_name='Matriz_Confusion', index=False)
+    class_rep.to_excel(writer, sheet_name='Reporte_Clasificacion', index=False)
 
-# Ajuste
-print('Optimizando modelos...')
-best_acc = 0.0
-best_clf = 0
-best_gs = ''
-for idx, gs in enumerate(grids):
-    print('\nEstimador: %s' % grid_dict[idx])
-    # ajusta búsqueda
-    gs.fit(X_train, y_train)
-    # mejores parámetros
-    print('Mejores parámetros: %s' % gs.best_params_)
-    # Mejor accuracy en entrenamiento
-    print('Mejor accuracy en entrenamiento: %.3f' % gs.best_score_)
-    # predicción en test con los mejores parámetros
-    y_pred = gs.predict(X_test)
-    # mejor accuracy en test con los mejores parámetros
-    print('Mejor accuracy en test con los mejores parámetros: %.3f ' % accuracy_score(y_test, y_pred))
-    # mejor modelo (por accuracy)
-    if accuracy_score(y_test, y_pred) > best_acc:
-        best_acc = accuracy_score(y_test, y_pred)
-        best_gs = gs
-        best_clf = idx
-print('\nClasificador con el mejor accuracy: %s' % grid_dict[best_clf])
+print('Listo!')

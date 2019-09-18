@@ -31,6 +31,7 @@ def tokenize(text):
     return stems
 
 
+print('Leyendo datos')
 newspaper_data = load_files(r'la_nacion\data', load_content=True, shuffle=True, encoding='utf8')
 X, y = newspaper_data.data, newspaper_data.target
 
@@ -58,6 +59,7 @@ spanish_stops.update(['estabamos', 'estara', 'estaran', 'estaras', 'estare', 'es
 # Se normalizan las stop words
 spanish_stops = stem_tokens(spanish_stops, stemmer)
 
+print('\nProcesando datos')
 for docu in range(0, len(X)):
     # extrae el texto del html
     article = Article('', language='es')
@@ -84,7 +86,10 @@ y_new = np.delete(y, y_del)
 vectorizer = TfidfVectorizer(tokenizer=tokenize, ngram_range=(1, 2), min_df=5, max_df=0.8, stop_words=spanish_stops, lowercase=True, strip_accents='unicode')
 X = pd.DataFrame(vectorizer.fit_transform(documents).toarray(), columns=vectorizer.get_feature_names())
 
+print('\nExportando datos')
 # exporta el dataset para clasificar
 dataset = X.merge(pd.DataFrame(y_new, columns=['target']), left_index=True, right_index=True)
 dataset['target_y'] = dataset['target_y'].map({0: 'Economia', 1: 'Politica', 2: 'Turismo'})
 dataset.to_pickle(r'la_nacion\datasets\la_nacion_dataset.pkl')
+
+print('\nListo!')
