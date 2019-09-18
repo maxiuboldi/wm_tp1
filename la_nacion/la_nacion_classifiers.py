@@ -15,6 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.externals import joblib
 
 SEED = 15
 K_FOLD = 5
@@ -65,7 +66,7 @@ gs = GridSearchCV(estimator=pipe,
                   verbose=1,
                   return_train_score=True)
 
-print('\nAjustando Pipeline en GridSearchCV')
+print('\nAjustando Pipeline en GridSearchCV\n')
 gs.fit(X_train, y_train)
 
 # resultados del CV
@@ -92,9 +93,21 @@ print('\nAccuracy_score: {}'.format(accuracy_score(y_test, y_pred)))
 
 print('\nExportando resultados')
 with pd.ExcelWriter(r'la_nacion\resultados\resultados_la_nacion.xlsx') as writer:
-    cv_result.to_excel(writer, sheet_name='cv_resultado', index=False)
+    cv_result.to_excel(writer, sheet_name='CV_Resultado', index=False)
     features_sel.to_excel(writer, sheet_name='Features_Seleccionadas', index=False)
     conf_mat.to_excel(writer, sheet_name='Matriz_Confusion', index=False)
     class_rep.to_excel(writer, sheet_name='Reporte_Clasificacion', index=False)
 
-print('Listo!')
+joblib.dump(gs.best_estimator_, r'la_nacion\resultados\modelo_lanacion.pkl')
+
+print('\nListo!')
+
+# para probar
+# model = joblib.load(r'la_nacion\resultados\modelo_lanacion.pkl')
+# y_pred2 = model.predict(X_test)
+#
+# print('\nMatriz de Confusión')
+# print(pd.DataFrame(confusion_matrix(y_test, y_pred2), columns=num_clase, index=num_clase))
+# print('\nReporte de Clasificación')
+# print(classification_report(y_test, y_pred2, target_names=num_clase))
+# print('\nAccuracy_score: {}'.format(accuracy_score(y_test, y_pred2)))
