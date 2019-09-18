@@ -98,12 +98,12 @@ with pd.ExcelWriter(r'la_nacion\resultados\resultados_la_nacion.xlsx') as writer
     conf_mat.to_excel(writer, sheet_name='Matriz_Confusion', index=False)
     class_rep.to_excel(writer, sheet_name='Reporte_Clasificacion', index=False)
 
-joblib.dump(gs.best_estimator_, r'la_nacion\resultados\modelo_lanacion.pkl')
+joblib.dump(gs.best_estimator_, r'la_nacion\resultados\modelo_la_nacion.pkl')
 
 print('\nListo!')
 
 # para probar
-# model = joblib.load(r'la_nacion\resultados\modelo_lanacion.pkl')
+# model = joblib.load(r'la_nacion\resultados\modelo_la_nacion.pkl')
 # y_pred2 = model.predict(X_test)
 #
 # print('\nMatriz de Confusión')
