@@ -25,7 +25,7 @@ def stem_tokens(tokens, stem):
 
 
 def tokenize(text):
-    tokenizer = RegexpTokenizer(r'(?u)\b\w\w+\b')
+    tokenizer = RegexpTokenizer(r'(?u)\b\w\w+\b')  # 2 o más caracteres alfanuméricos, ignorando la puntuación y tratando los mismos como separadores.
     tokens = tokenizer.tokenize(text)
     stems = stem_tokens(tokens, stemmer)
     return stems

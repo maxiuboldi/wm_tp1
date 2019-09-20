@@ -103,8 +103,8 @@ print('\nExportando resultados')
 with pd.ExcelWriter(r'la_nacion\resultados\resultados_la_nacion.xlsx') as writer:
     cv_result.to_excel(writer, sheet_name='CV_Resultado', index=False)
     features_sel.to_excel(writer, sheet_name='Features_Seleccionadas', index=False)
-    conf_mat.to_excel(writer, sheet_name='Matriz_Confusion', index=False)
-    class_rep.to_excel(writer, sheet_name='Reporte_Clasificacion', index=False)
+    conf_mat.to_excel(writer, sheet_name='Matriz_Confusion')
+    class_rep.to_excel(writer, sheet_name='Reporte_Clasificacion')
 
 joblib.dump(gs.best_estimator_, r'la_nacion\resultados\modelo_la_nacion.pkl')
 
